@@ -1,6 +1,11 @@
 # Telemetry-Strategy-Analysis-Montreal-GP-2025
 In-depth analysis of the 2025 Montreal Grand Prix using official telemetry and lap timing data to uncover driver performance patterns, pit stop strategy decisions, and pace evolution.
 
+
+https://github.com/user-attachments/assets/539f3585-c9dd-48fc-8787-5d465ce1cd5c
+
+
+
 ## Race Results – Top 10
 1. **George Russell** – Mercedes  
 2. **Max Verstappen** – Red Bull  
