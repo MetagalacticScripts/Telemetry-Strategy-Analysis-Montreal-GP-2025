@@ -1,10 +1,7 @@
 # Telemetry Strategy Analysis – Montreal GP 2025  
 An in-depth review of the 2025 Montreal Grand Prix using official telemetry and lap timing data to uncover driver performance patterns, pit stop strategy decisions, and pace evolution.  
 
-
-https://github.com/user-attachments/assets/76e4f83f-ab9f-4294-b30c-cd830646c8ae
-
-
+[![Race Replay Animation](https://github.com/user-attachments/assets/76e4f83f-ab9f-4294-b30c-cd830646c8ae)](https://github.com/user-attachments/assets/76e4f83f-ab9f-4294-b30c-cd830646c8ae)  
 
 ---
 
@@ -33,23 +30,72 @@ https://github.com/user-attachments/assets/76e4f83f-ab9f-4294-b30c-cd830646c8ae
 
 ## Key Visuals  
 
-### Lap Evolution (Rolling Median Pace)  
-![Lap Evolution](Reports/plots/lap_evolution_rolling.png)  
+<table>
+<tr>
+<td>
 
-### Stint Timeline  
-![Stint Timeline](Reports/plots/stint_timeline.png)  
+**Lap Evolution (Rolling Median Pace)**  
+<img src="Reports/plots/lap_evolution_rolling.png" width="100%">
 
-### Tyre Degradation Curves  
-![Tyre Deg](Reports/plots/tyre_deg_curves.png)  
+</td>
+<td>
 
-### Pit Stop Loss – Green vs SC/VSC  
-![Pit Loss](Reports/plots/pit_loss.png)  
+**Stint Timeline**  
+<img src="Reports/plots/stint_timeline.png" width="100%">
 
-### Undercut Gains (Top 20)  
-![Undercut Gains](Reports/plots/undercut_gains_top.png)  
+</td>
+</tr>
 
-### Track Heatmap – Speed (Antonelli Example)  
-![Heatmap Speed](Reports/plots/heatmap_Speed_ANT.png)  
+<tr>
+<td>
 
-### Delta Time Plot – Russell vs Verstappen vs Antonelli  
-![Delta Time Plot](Reports/media/delta_time_plot.png)  
+**Tyre Degradation Curves**  
+<img src="Reports/plots/tyre_deg_curves.png" width="100%">
+
+</td>
+<td>
+
+**Pit Stop Loss – Green vs SC/VSC**  
+<img src="Reports/plots/pit_loss.png" width="100%">
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+**Undercut Gains (Top 20)**  
+<img src="Reports/plots/undercut_gains_top.png" width="100%">
+
+</td>
+<td>
+
+**Track Heatmap – Speed (Antonelli Example)**  
+<img src="Reports/plots/heatmap_Speed_ANT.png" width="100%">
+
+</td>
+</tr>
+
+<tr>
+<td colspan="2">
+
+**Delta Time Plot – Russell vs Verstappen vs Antonelli**  
+<img src="Reports/media/delta_time_plot.png" width="100%">
+
+</td>
+</tr>
+</table>
+
+---
+
+## Conclusions  
+
+- **Race Pace Evolution** – The median pace across the field improved by **~2.43s** from the opening to the final stint, reflecting track rubbering and fuel burn-off.  
+- **Pit Strategy Impact** – Average pit loss under green was **19.5s**, but ballooned to **76.5s** when stops coincided with SC/VSC periods. This heavily influenced position changes for mid-field runners.  
+- **Tyre Performance** –  
+  - **HARD** tyres showed minimal degradation (−0.031 s/lap in first 15 laps), favoring consistent long runs.  
+  - **MEDIUM** tyres degraded more quickly (+0.084 s/lap), making them potent for short, aggressive stints but vulnerable over distance.  
+- **Standout Tyre Management** – Leclerc, Russell, and Antonelli posted some of the lowest degradation rates, enabling strategic flexibility late in the race.  
+- **Undercut Opportunities** – Multiple large undercut gains (>3s) were recorded, with Boraschi vs Stroll (+9.2s) and Verstappen vs Hamilton (+8.4s) being the most decisive.  
+- **Key Battles** – The Russell–Verstappen–Antonelli trio ran within a second of each other in the closing laps, with Russell narrowly holding the lead under pressure.  
+
