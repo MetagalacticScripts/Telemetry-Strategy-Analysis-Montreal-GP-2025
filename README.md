@@ -1,7 +1,9 @@
 # Telemetry Strategy Analysis – Montreal GP 2025  
 An in-depth review of the 2025 Montreal Grand Prix using official telemetry and lap timing data to uncover driver performance patterns, pit stop strategy decisions, and pace evolution.  
 
-[![Telemetry Strategy Analysis – Montreal GP 2025](https://github.com/user-attachments/assets/539f3585-c9dd-48fc-8787-5d465ce1cd5c)](https://github.com/user-attachments/assets/539f3585-c9dd-48fc-8787-5d465ce1cd5c)  
+[![Race Replay Animation](Reports/media/anim_fastlaps.copy.mp4)](Reports/media/anim_fastlaps.copy.mp4)  
+
+---
 
 ## Race Results – Top 10  
 1. **George Russell** – Mercedes – 1:31:52.688  
@@ -15,9 +17,43 @@ An in-depth review of the 2025 Montreal Grand Prix using official telemetry and 
 9. **Esteban Ocon** – Haas – +1 Lap  
 10. **Carlos Sainz Jr.** – Williams – +1 Lap  
 
+---
+
 ## Technical Project Highlights  
-- **Data Acquisition** – Collected telemetry and timing data via `FastF1`.  
+- **Data Acquisition** – Collected telemetry & timing data via `FastF1`.  
 - **Data Structuring** – Integrated lap times, stint data, and pit stops into cohesive datasets.  
-- **Performance Analysis** – Assessed pace trends, tyre degradation, and sector time differentials.  
+- **Performance Analysis** – Evaluated pace trends, tyre degradation, and sector time differentials.  
 - **Strategy Modelling** – Compared stint lengths, compound choices, and pit stop timings.  
-- **Visualization** – Produced clear charts for lap evolution, pit windows, and position changes.  
+- **Visualization** – Produced charts for lap evolution, pit windows, tyre degradation, and position changes.  
+
+---
+
+## Key Visuals  
+
+### Lap Evolution (Rolling Median Pace)  
+![Lap Evolution](Reports/plots/lap_evolution_rolling.png)  
+
+### Stint Timeline  
+![Stint Timeline](Reports/plots/stint_timeline.png)  
+
+### Tyre Degradation Curves  
+![Tyre Deg](Reports/plots/tyre_deg_curves.png)  
+
+### Pit Stop Loss – Green vs SC/VSC  
+![Pit Loss](Reports/plots/pit_loss.png)  
+
+### Undercut Gains (Top 20)  
+![Undercut Gains](Reports/plots/undercut_gains_top.png)  
+
+### Track Heatmap – Speed (Antonelli Example)  
+![Heatmap Speed](Reports/plots/heatmap_Speed_ANT.png)  
+
+### Delta Time Plot – Russell vs Verstappen vs Antonelli  
+![Delta Time Plot](Reports/media/delta_time_plot.png)  
+
+---
+
+## How to Build the Report  
+Run:  
+```bash
+python Scripts/99_build_report.py
