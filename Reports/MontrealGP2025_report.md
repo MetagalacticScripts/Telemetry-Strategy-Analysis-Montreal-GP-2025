@@ -1,32 +1,45 @@
 # Telemetry Strategy Analysis — Montreal GP 2025
 
-*Auto-generated on 2025-08-16 00:27*
+*Auto-generated on 2025-08-16 01:21*
 
 ## Headlines
 - Field median pace improved by **2.43 s** from opening to closing 10 laps (fuel burn / rubbering).
-- Median **pit loss** under green: **19.5 s** vs **76.5 s** under **SC/VSC**.
+- Median **pit loss** under green: **19.5 s** vs **76.5 s** under **SC/VSC** (n=82).
 - Tyre **degradation (sec/lap)** over first 15 laps:
 - HARD: -0.031 s/lap over first 15 laps (n=15)
 - MEDIUM: +0.084 s/lap over first 15 laps (n=15)
 
+## Highlights (Media)
+### Delta to Reference (fast-lap comparison)
+![Delta to reference](Reports/media/delta_time_plot.png)
+
+### Fast Lap Animation
+[Watch MP4](Reports/media/anim_fastlaps.mp4)
+
+### Race Replay
+[Watch MP4](Reports/media/race_replay.mp4)
+
 ## Visuals
 ### Lap Evolution
-![lap_evolution_rolling.png](Reports/plots/lap_evolution_rolling.png)
+![Lap Evolution](Reports/plots/lap_evolution_rolling.png)
 
 ### Stint Timeline
-![stint_timeline.png](Reports/plots/stint_timeline.png)
+![Stint Timeline](Reports/plots/stint_timeline.png)
 
 ### Stint-Normalized Pace by Compound
-![stint_pace_by_compound.png](Reports/plots/stint_pace_by_compound.png)
+![Stint-Normalized Pace by Compound](Reports/plots/stint_pace_by_compound.png)
 
 ### Pit Stop Loss vs Nearby Pace
-![pit_loss.png](Reports/plots/pit_loss.png)
+![Pit Stop Loss vs Nearby Pace](Reports/plots/pit_loss.png)
 
 ### Undercut Gains (Top 20)
-![undercut_gains_top.png](Reports/plots/undercut_gains_top.png)
+![Undercut Gains (Top 20)](Reports/plots/undercut_gains_top.png)
 
 ### Tyre Degradation Curves
-![tyre_deg_curves.png](Reports/plots/tyre_deg_curves.png)
+![Tyre Degradation Curves](Reports/plots/tyre_deg_curves.png)
+
+### Track Heatmaps — Speed (multidriver)
+![Track Heatmaps — Speed (multidriver)](Reports/plots/heatmap_Speed_multidriver.png)
 
 ## Stint Degradation — Best & Worst (sec/lap)
 **Best 5 (lowest degradation):**
