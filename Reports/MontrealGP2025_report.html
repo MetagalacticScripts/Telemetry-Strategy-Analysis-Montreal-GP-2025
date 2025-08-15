@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Telemetry Strategy Analysis — Montreal GP 2025</title>
+<style>
+ body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 40px; line-height: 1.5; }
+ h1, h2, h3 { margin-top: 1.6em; }
+ img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+ table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+ th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+ th { background: #f7f7f7; }
+ code { background: #f3f3f3; padding: 2px 4px; border-radius: 4px; }
+ .muted { color: #666; }
+</style>
+</head>
+<body>
+<article>
+<h1>Telemetry Strategy Analysis — Montreal GP 2025</h1>
+<p class="muted">Auto-generated 2025-08-16 00:27</p>
+<section>
+<h2>Headlines</h2>
+<ul>
+<li>Field median pace improved by <b>2.43</b> s from opening to closing 10 laps.</li>
+<li>Median pit loss — Green: <b>19.5</b> s; SC/VSC: <b>76.5</b> s.</li>
+<li>Tyre degradation (first 15 laps):<br>- HARD: -0.031 s/lap over first 15 laps (n=15)<br>- MEDIUM: +0.084 s/lap over first 15 laps (n=15)</li>
+</ul>
+</section>
+<section>
+<h2>Visuals</h2>
+<h3>Lap Evolution</h3><img src="Reports/plots/lap_evolution_rolling.png" alt="Lap Evolution"/><h3>Stint Timeline</h3><img src="Reports/plots/stint_timeline.png" alt="Stint Timeline"/><h3>Stint-Normalized Pace by Compound</h3><img src="Reports/plots/stint_pace_by_compound.png" alt="Stint-Normalized Pace by Compound"/><h3>Pit Stop Loss vs Nearby Pace</h3><img src="Reports/plots/pit_loss.png" alt="Pit Stop Loss vs Nearby Pace"/><h3>Undercut Gains (Top 20)</h3><img src="Reports/plots/undercut_gains_top.png" alt="Undercut Gains (Top 20)"/><h3>Tyre Degradation Curves</h3><img src="Reports/plots/tyre_deg_curves.png" alt="Tyre Degradation Curves"/>
+</section>
+<section>
+<h2>Stint Degradation — Best & Worst</h2>
+<h3>Best 5 (lowest)</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Driver</th>
+      <th>StintNo</th>
+      <th>Compound</th>
+      <th>laps_in_stint</th>
+      <th>deg_per_lap</th>
+      <th>stint_median</th>
+      <th>stint_best</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LEC</td>
+      <td>1</td>
+      <td>HARD</td>
+      <td>26</td>
+      <td>-0.064</td>
+      <td>76.564</td>
+      <td>76.019</td>
+    </tr>
+    <tr>
+      <td>RUS</td>
+      <td>3</td>
+      <td>HARD</td>
+      <td>21</td>
+      <td>-0.063</td>
+      <td>74.869</td>
+      <td>74.119</td>
+    </tr>
+    <tr>
+      <td>LAW</td>
+      <td>2</td>
+      <td>MEDIUM</td>
+      <td>12</td>
+      <td>-0.059</td>
+      <td>77.278</td>
+      <td>76.320</td>
+    </tr>
+    <tr>
+      <td>HUL</td>
+      <td>2</td>
+      <td>HARD</td>
+      <td>44</td>
+      <td>-0.048</td>
+      <td>76.555</td>
+      <td>75.372</td>
+    </tr>
+    <tr>
+      <td>ANT</td>
+      <td>3</td>
+      <td>HARD</td>
+      <td>25</td>
+      <td>-0.043</td>
+      <td>74.860</td>
+      <td>74.455</td>
+    </tr>
+  </tbody>
+</table>
+<h3>Worst 5 (highest)</h3>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Driver</th>
+      <th>StintNo</th>
+      <th>Compound</th>
+      <th>laps_in_stint</th>
+      <th>deg_per_lap</th>
+      <th>stint_median</th>
+      <th>stint_best</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ALB</td>
+      <td>1</td>
+      <td>MEDIUM</td>
+      <td>21</td>
+      <td>0.080</td>
+      <td>78.040</td>
+      <td>77.275</td>
+    </tr>
+    <tr>
+      <td>LEC</td>
+      <td>3</td>
+      <td>MEDIUM</td>
+      <td>11</td>
+      <td>0.084</td>
+      <td>74.798</td>
+      <td>74.261</td>
+    </tr>
+    <tr>
+      <td>VER</td>
+      <td>1</td>
+      <td>MEDIUM</td>
+      <td>10</td>
+      <td>0.092</td>
+      <td>76.566</td>
+      <td>75.901</td>
+    </tr>
+    <tr>
+      <td>TSU</td>
+      <td>2</td>
+      <td>MEDIUM</td>
+      <td>7</td>
+      <td>0.110</td>
+      <td>75.910</td>
+      <td>75.358</td>
+    </tr>
+    <tr>
+      <td>ALO</td>
+      <td>1</td>
+      <td>MEDIUM</td>
+      <td>13</td>
+      <td>0.181</td>
+      <td>77.208</td>
+      <td>76.369</td>
+    </tr>
+  </tbody>
+</table>
+</section>
+<section>
+<h2>Top Undercut Pairs</h2>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>A_driver</th>
+      <th>B_rival</th>
+      <th>A_in_lap</th>
+      <th>B_in_lap</th>
+      <th>compare_lap</th>
+      <th>gain_s</th>
+      <th>gap_before_s</th>
+      <th>gap_after_s</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>BOR</td>
+      <td>STR</td>
+      <td>49</td>
+      <td>51</td>
+      <td>53</td>
+      <td>9.207</td>
+      <td>-4.821</td>
+      <td>-14.028</td>
+    </tr>
+    <tr>
+      <td>VER</td>
+      <td>HAM</td>
+      <td>12</td>
+      <td>15</td>
+      <td>17</td>
+      <td>8.384</td>
+      <td>-4.810</td>
+      <td>-13.194</td>
+    </tr>
+    <tr>
+      <td>ANT</td>
+      <td>HAM</td>
+      <td>14</td>
+      <td>15</td>
+      <td>17</td>
+      <td>4.440</td>
+      <td>-4.186</td>
+      <td>-8.626</td>
+    </tr>
+    <tr>
+      <td>BOR</td>
+      <td>STR</td>
+      <td>66</td>
+      <td>66</td>
+      <td>68</td>
+      <td>3.775</td>
+      <td>-2.771</td>
+      <td>-6.546</td>
+    </tr>
+    <tr>
+      <td>SAI</td>
+      <td>OCO</td>
+      <td>57</td>
+      <td>57</td>
+      <td>59</td>
+      <td>3.642</td>
+      <td>4.154</td>
+      <td>0.512</td>
+    </tr>
+    <tr>
+      <td>COL</td>
+      <td>STR</td>
+      <td>66</td>
+      <td>66</td>
+      <td>68</td>
+      <td>3.637</td>
+      <td>-4.668</td>
+      <td>-8.305</td>
+    </tr>
+    <tr>
+      <td>TSU</td>
+      <td>HAD</td>
+      <td>66</td>
+      <td>66</td>
+      <td>68</td>
+      <td>3.235</td>
+      <td>-4.838</td>
+      <td>-8.073</td>
+    </tr>
+    <tr>
+      <td>VER</td>
+      <td>ANT</td>
+      <td>12</td>
+      <td>14</td>
+      <td>16</td>
+      <td>3.118</td>
+      <td>-0.451</td>
+      <td>-3.569</td>
+    </tr>
+    <tr>
+      <td>RUS</td>
+      <td>ANT</td>
+      <td>13</td>
+      <td>14</td>
+      <td>16</td>
+      <td>2.796</td>
+      <td>-2.996</td>
+      <td>-5.792</td>
+    </tr>
+    <tr>
+      <td>ANT</td>
+      <td>PIA</td>
+      <td>67</td>
+      <td>67</td>
+      <td>69</td>
+      <td>2.733</td>
+      <td>-1.243</td>
+      <td>-3.976</td>
+    </tr>
+  </tbody>
+</table>
+</section>
+<section>
+<h2>Method Notes</h2>
+<ul>
+<li><b>Data:</b> FastF1 telemetry/timing; cached locally.</li>
+<li><b>Clean laps:</b> removed in/out laps, non-green (where available), and implausible outliers.</li>
+<li><b>Pit loss:</b> <code>(in-lap + out-lap) − 2 × median(neighbor laps)</code>; SC/VSC flagged if either lap affected.</li>
+<li><b>Undercut:</b> compared elapsed-time gap from lap before first stop to lap after both stops.</li>
+<li><b>Degradation:</b> median lap vs tyre age; linear fit over first 15 laps for slope.</li>
+</ul>
+</section>
+</article>
+</body>
+</html>

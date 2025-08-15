@@ -1,0 +1,4 @@
+.fastf1_cache/
+fastf1_cache/
+*.parquet
+*.csv
