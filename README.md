@@ -1,7 +1,10 @@
 # Telemetry Strategy Analysis – Montreal GP 2025  
 An in-depth review of the 2025 Montreal Grand Prix using official telemetry and lap timing data to uncover driver performance patterns, pit stop strategy decisions, and pace evolution.  
 
-[![Race Replay Animation](Reports/media/anim_fastlaps.copy.mp4)](Reports/media/anim_fastlaps.copy.mp4)  
+
+https://github.com/user-attachments/assets/76e4f83f-ab9f-4294-b30c-cd830646c8ae
+
+
 
 ---
 
@@ -50,10 +53,3 @@ An in-depth review of the 2025 Montreal Grand Prix using official telemetry and 
 
 ### Delta Time Plot – Russell vs Verstappen vs Antonelli  
 ![Delta Time Plot](Reports/media/delta_time_plot.png)  
-
----
-
-## How to Build the Report  
-Run:  
-```bash
-python Scripts/99_build_report.py
