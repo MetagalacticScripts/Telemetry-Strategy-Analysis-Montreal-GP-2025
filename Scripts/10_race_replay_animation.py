@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter, PillowWriter
 from matplotlib.collections import LineCollection
+import matplotlib.patheffects as pe
 
 # ------------------ CONFIG ------------------
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,20 +18,26 @@ OUTDIR.mkdir(parents=True, exist_ok=True)
 OUT_MP4 = OUTDIR / "race_replay.mp4"
 OUT_GIF = OUTDIR / "race_replay.gif"
 
-FPS = 40                 # animation frames per second
-DURATION_S = None        # None = auto from longest driver trace
-DPI = 200
-FIGSIZE = (11, 7)
+# Playback tuning
+FPS = 40                   # animation frames per second
+ANIM_SPEEDUP = 8.0         # >1 = faster than real-time (e.g., 8x compresses runtime)
+DURATION_S = None          # None = use full race duration from data; else crop to this many seconds
 
-TRAIL_RATIO = 0.12       # fraction of lap/time window to show as trail
-MARKER_SIZE = 10
-LINE_WIDTH = 2.8
-SHOW_GAP_PANEL = True    # toggle side panel showing live gap to leader
-MAX_DRIVERS = 12         # safety cap
+DPI = 200
+FIGSIZE = (12.5, 7.5)
+
+TRAIL_RATIO = 0.10         # fraction of frames to show as trail (window length relative to total frames)
+MARKER_SIZE = 9
+LEADER_SIZE = 13
+TRAIL_ALPHA = 0.35
+TRAIL_WIDTH = 2.0
+SHOW_GAP_PANEL = True      # toggle side panel showing live gap to leader
+MAX_DRIVERS = 12           # safety cap
+SHOW_LEADER_LABEL = True
 
 # Fallback colors (team-ish); anything missing gets auto cycle color
 COLOR_MAP = {
-    "RUS": "#00D2BE",  # Merc teal (you used gold earlier; feel free to swap)
+    "RUS": "#00D2BE",  # Merc teal
     "ANT": "#FFD700",  # Antonelli gold
     "VER": "#1E41FF",  # RBR blue
     "LEC": "#DC0000",  # Ferrari red
@@ -51,7 +58,10 @@ COLOR_MAP = {
 }
 
 TITLE = "Race Replay — Montreal 2025"
-SUBTITLE = "Real X/Y positions, synchronized by time • right panel: live gap to leader"
+SUBTITLE = "Real X/Y positions synchronized by time • right panel: live gap to leader"
+
+# Column name aliases for speed (we integrate to get whole-race progress & lap number)
+SPEED_COLS = ["Speed", "SpeedKMH", "speed", "Velocity"]
 
 # ------------------ HELPERS ------------------
 def list_csvs():
@@ -66,17 +76,12 @@ def infer_code(filename: str) -> str:
     return (m.group(1) if m else name[:3]).upper()
 
 def parse_time_series(s: pd.Series) -> np.ndarray:
-    """
-    Return time in seconds starting at 0.
-    Accepts either already-numeric seconds, or pandas Timedelta-like strings.
-    """
+    """Return time in seconds starting at 0."""
     if np.issubdtype(s.dtype, np.number):
         t = pd.to_numeric(s, errors="coerce").to_numpy(dtype=float)
     else:
-        # handle '0 days 00:00:00.088000' etc.
         tdelta = pd.to_timedelta(s, errors="coerce")
         t = tdelta.dt.total_seconds().to_numpy(dtype=float)
-    # normalize start to 0 and drop non-finite
     if np.isfinite(t).any():
         t0 = np.nanmin(t[np.isfinite(t)])
         t = t - t0
@@ -85,8 +90,24 @@ def parse_time_series(s: pd.Series) -> np.ndarray:
 def safe_numeric(series: pd.Series) -> np.ndarray:
     return pd.to_numeric(series, errors="coerce").to_numpy(dtype=float)
 
+def _find_first(df: pd.DataFrame, candidates: list[str]) -> str | None:
+    for c in candidates:
+        if c in df.columns:
+            return c
+    return None
+
+def _speed_mps(df: pd.DataFrame) -> np.ndarray:
+    c = _find_first(df, SPEED_COLS)
+    if c is None:
+        return np.full(len(df), np.nan)
+    v = pd.to_numeric(df[c], errors="coerce").to_numpy(dtype=float)
+    if not np.isfinite(v).any():
+        return np.full(len(df), np.nan)
+    # heuristic: if typical speed > 60 it's probably km/h
+    return v * ((1/3.6) if np.nanmedian(v) > 60 else 1.0)
+
 def load_driver_trace(fp: str):
-    """Load a single driver CSV -> dict with time(s), X, Y, Distance; filters bad rows."""
+    """Load a single driver CSV -> dict with time(s), X, Y, Distance, Speed(m/s); filters bad rows."""
     df = pd.read_csv(fp)
     needed = []
     if "Time" in df.columns:
@@ -98,62 +119,50 @@ def load_driver_trace(fp: str):
     if not needed:
         raise ValueError(f"{Path(fp).name}: missing required columns (need Time + X/Y or Distance).")
 
-    # build arrays
     t = parse_time_series(df["Time"]) if "Time" in df.columns else None
     x = safe_numeric(df["X"]) if "X" in df.columns else None
     y = safe_numeric(df["Y"]) if "Y" in df.columns else None
     d = safe_numeric(df["Distance"]) if "Distance" in df.columns else None
+    v = _speed_mps(df)  # m/s (may contain NaN)
 
-    # coherence mask
     mask = np.ones(len(df), dtype=bool)
-    if t is not None:
-        mask &= np.isfinite(t)
-    if x is not None:
-        mask &= np.isfinite(x)
-    if y is not None:
-        mask &= np.isfinite(y)
-    if d is not None:
-        mask &= np.isfinite(d)
-
-    # if we have X/Y missing but have Distance, we still allow (we'll fake XY later)
+    if t is not None: mask &= np.isfinite(t)
+    if x is not None: mask &= np.isfinite(x)
+    if y is not None: mask &= np.isfinite(y)
+    if d is not None: mask &= np.isfinite(d)
+    # We allow missing XY provided Time is valid
     if x is None or y is None:
-        # keep mask only for available arrays
         mask = np.isfinite(t) if t is not None else mask
 
-    # apply mask
     if t is not None: t = t[mask]
     if x is not None: x = x[mask]
     if y is not None: y = y[mask]
     if d is not None: d = d[mask]
+    if v is not None: v = v[mask]
 
-    return {
-        "time": t,
-        "X": x,
-        "Y": y,
-        "Distance": d
-    }
+    return {"time": t, "X": x, "Y": y, "Distance": d, "Speed": v}
 
 def resample_to_time(trace: dict, t_grid: np.ndarray):
-    """Interpolate X/Y/Distance onto a common time grid."""
+    """Interpolate X/Y/Distance/Speed onto a common time grid."""
     t = trace["time"]
     if t is None or len(t) < 2:
         return None
-    # ensure strictly increasing for interp
     good = np.isfinite(t)
     t = t[good]
     if len(t) < 2:
         return None
 
     out = {"time": t_grid}
-    for key in ["X", "Y", "Distance"]:
+    for key in ["X", "Y", "Distance", "Speed"]:
         arr = trace.get(key)
         if arr is not None:
-            arr = arr[np.isfinite(arr) & good[:len(arr)]] if len(arr) == len(good) else arr[good[:len(arr)]]
-            # handle degenerate
+            # align length if needed
+            if len(arr) != np.sum(good):
+                arr = arr[:np.sum(good)]
+            arr = arr[good[:len(arr)]]
             if np.isfinite(arr).sum() < 2:
                 out[key] = np.full_like(t_grid, np.nan, dtype=float)
             else:
-                # fill gaps at ends
                 s = pd.Series(arr).ffill().bfill().to_numpy()
                 out[key] = np.interp(t_grid, t, s)
         else:
@@ -165,18 +174,14 @@ def build_track_outline(sample_xy: dict):
     x = sample_xy.get("X")
     y = sample_xy.get("Y")
     if x is not None and y is not None and np.isfinite(x).any() and np.isfinite(y).any():
-        # slight smoothing for aesthetics
-        df = pd.DataFrame({"x": x, "y": y})
-        sm = df.rolling(7, center=True, min_periods=1).mean()
-        xs, ys = sm["x"].to_numpy(), sm["y"].to_numpy()
+        df = pd.DataFrame({"x": x, "y": y}).rolling(7, center=True, min_periods=1).mean()
+        xs, ys = df["x"].to_numpy(), df["y"].to_numpy()
         pts = np.column_stack((xs, ys))
         segs = np.concatenate([pts[:-1, None, :], pts[1:, None, :]], axis=1)
         return segs, (xs.min(), xs.max(), ys.min(), ys.max()), True
     else:
-        # fallback to linear "track" using distance (not as pretty, but works)
         d = sample_xy.get("Distance")
         if d is None or not np.isfinite(d).any():
-            # final fallback
             t = sample_xy["time"]
             d = np.linspace(0, 1, len(t))
         xs, ys = d, np.zeros_like(d)
@@ -192,7 +197,6 @@ def main():
         print(f"[warn] Found {len(files)} files; capping to {MAX_DRIVERS}.")
         files = files[:MAX_DRIVERS]
 
-    # Load all drivers
     raw = {}
     codes = []
     for fp in files:
@@ -212,49 +216,64 @@ def main():
         print("[error] No usable drivers found.")
         return
 
-    # Common time grid
+    # Real race duration from data
     max_t = max(np.nanmax(tr["time"]) for tr in raw.values())
     if DURATION_S is not None:
         max_t = min(max_t, float(DURATION_S))
-    frames = max(100, int(max_t * FPS))
+
+    # Animation compression: fewer frames for the same real duration
+    frames = max(120, int(max_t * FPS / ANIM_SPEEDUP))
     t_grid = np.linspace(0.0, max_t, frames)
 
-    # Resample everyone onto t_grid
-    traces = {}
-    for c in codes:
-        traces[c] = resample_to_time(raw[c], t_grid)
+    # Resample onto common grid
+    traces = {c: resample_to_time(raw[c], t_grid) for c in codes}
 
-    # Choose a sample for the outline (first with XY; else fallback)
-    outline_source = None
-    for c in codes:
-        if np.isfinite(traces[c]["X"]).any() and np.isfinite(traces[c]["Y"]).any():
-            outline_source = c
-            break
-    if outline_source is None:
-        outline_source = codes[0]
-
+    # Choose outline source
+    outline_source = next((c for c in codes if
+                           np.isfinite(traces[c]["X"]).any() and np.isfinite(traces[c]["Y"]).any()),
+                          codes[0])
     segs_outline, (xmin, xmax, ymin, ymax), has_xy = build_track_outline(traces[outline_source])
     print(f"[info] Outline from: {outline_source} (XY available: {has_xy})")
 
-    # Prepare figure
-    plt.style.use("dark_background")
-    if SHOW_GAP_PANEL:
-        fig = plt.figure(figsize=FIGSIZE)
-        # grid spec: big track area + narrow gap panel
-        gs = fig.add_gridspec(1, 5)
-        ax_track = fig.add_subplot(gs[0, :4])
-        ax_gap = fig.add_subplot(gs[0, 4])
+    # Estimate track length (meters) for lap counting:
+    # Prefer Distance column 99th percentile across drivers; fallback to XY scale.
+    track_len_candidates = []
+    for c in codes:
+        d = traces[c].get("Distance")
+        if d is not None and np.isfinite(d).any():
+            track_len_candidates.append(np.nanpercentile(d, 99))
+    if len(track_len_candidates) >= 1 and np.isfinite(track_len_candidates).any():
+        TRACK_LEN = float(np.nanmedian(track_len_candidates))
     else:
-        fig, ax_track = plt.subplots(figsize=FIGSIZE)
+        TRACK_LEN = float(np.hypot(xmax - xmin, ymax - ymin)) * 6.0  # heuristic fallback
+    print(f"[info] Estimated track length ≈ {TRACK_LEN:0.1f} m")
+
+    # Prepare figure (extra margins so texts don’t overlap track)
+    plt.style.use("dark_background")
+    fig = plt.figure(figsize=FIGSIZE)
+
+    if SHOW_GAP_PANEL:
+        gs = fig.add_gridspec(1, 6, left=0.05, right=0.97, top=0.87, bottom=0.07, wspace=0.15)
+        ax_track = fig.add_subplot(gs[0, :4])
+        ax_gap   = fig.add_subplot(gs[0, 4:])
+    else:
+        gs = fig.add_gridspec(1, 1, left=0.06, right=0.97, top=0.87, bottom=0.08)
+        ax_track = fig.add_subplot(gs[0, 0])
         ax_gap = None
 
-    # Draw track outline
-    lc = LineCollection(segs_outline, colors="#A9A9A9", linewidths=2.0, alpha=0.35)
+    # Global title/subtitle placed in figure (not on the track axes)
+    fig.text(0.05, 0.94, TITLE, fontsize=16, weight="bold", ha="left", va="center")
+    subtitle_text = fig.text(0.05, 0.90, SUBTITLE, fontsize=10.5, ha="left", va="center", alpha=0.9)
+    time_text     = fig.text(0.05, 0.865, "T+0.00s", fontsize=10.5, ha="left", va="center", alpha=0.9)
+    lap_text      = fig.text(0.95, 0.94, "Lap 1", fontsize=14, weight="bold", ha="right", va="center")
+
+    # Track outline
+    lc = LineCollection(segs_outline, colors="#A9A9A9", linewidths=2.0, alpha=0.35, zorder=1)
     ax_track.add_collection(lc)
     if has_xy:
         ax_track.set_aspect("equal", adjustable="datalim")
-        ax_track.set_xlim(xmin - 20, xmax + 20)
-        ax_track.set_ylim(ymin - 20, ymax + 20)
+        ax_track.set_xlim(xmin - 25, xmax + 25)
+        ax_track.set_ylim(ymin - 25, ymax + 25)
         ax_track.axis("off")
     else:
         ax_track.autoscale()
@@ -264,121 +283,180 @@ def main():
 
     # Artists (markers + trails)
     artists = {}
+    halos = {}
+    labels = {}
     trails = {}
     palette_iter = iter(plt.rcParams['axes.prop_cycle'].by_key().get('color', []))
     for c in codes:
         color = COLOR_MAP.get(c, next(palette_iter, "#1f77b4"))
+        # trail underneath everything
+        trails[c], = ax_track.plot([], [], linewidth=TRAIL_WIDTH, color=color,
+                                   alpha=TRAIL_ALPHA, zorder=2, solid_capstyle="round")
+        # marker
         artists[c], = ax_track.plot([], [], marker="o", markersize=MARKER_SIZE,
-                                    color=color, markeredgecolor="black", markeredgewidth=0.8, zorder=5, label=c)
-        trails[c], = ax_track.plot([], [], linewidth=LINE_WIDTH, color=color, alpha=0.8, zorder=4)
+                                    color=color, markeredgecolor="black",
+                                    markeredgewidth=0.8, zorder=5, label=c)
+        # halo for leader (we’ll update which one is leader every frame)
+        halos[c], = ax_track.plot([], [], marker="o", markersize=LEADER_SIZE+6,
+                                  color="none", markeredgecolor=color,
+                                  markeredgewidth=2.5, alpha=0.85, zorder=4)
+        halos[c].set_visible(False)
+        # leader label (hidden unless leader)
+        labels[c] = ax_track.text(0, 0, "", fontsize=10, weight="bold",
+                                  color=color, zorder=6,
+                                  path_effects=[pe.withStroke(linewidth=2.5, foreground="black", alpha=0.7)])
+        labels[c].set_visible(False)
 
-    # Title + legend
-    title = ax_track.text(0.02, 0.98, TITLE, transform=ax_track.transAxes,
-                          ha="left", va="top", fontsize=14, weight="bold")
-    subtitle = ax_track.text(0.02, 0.935, SUBTITLE, transform=ax_track.transAxes,
-                             ha="left", va="top", fontsize=10, alpha=0.85)
-    legend = ax_track.legend(loc="lower right", frameon=False, ncol=2)
+    # Legend (outside lower center)
+    fig.legend(handles=[artists[c] for c in codes], labels=codes,
+               loc="lower center", ncol=min(6, len(codes)), frameon=False, bbox_to_anchor=(0.5, 0.01))
 
     # Gap panel setup
     if SHOW_GAP_PANEL and ax_gap is not None:
-        ax_gap.set_title("Gap to Leader (m)", fontsize=10)
+        ax_gap.set_title("Gap to Leader (m)", fontsize=11)
         ax_gap.invert_yaxis()  # leader on top
         ax_gap.set_xlim(0, 50)  # will autoscale later
         ax_gap.set_xticks([0, 10, 20, 30, 40, 50])
         ax_gap.grid(alpha=0.15)
-        gap_texts = {}
+
+    # Precompute cumulative distance for leader/gaps & lap counter
+    # Use integrated speed (m/s) over time; fallback to Distance if speed missing.
+    dt = np.diff(t_grid, prepend=t_grid[0])
+    dt[0] = 0.0
+    cum_dist = {}
+    for c in codes:
+        v = traces[c].get("Speed")
+        if v is not None and np.isfinite(v).any():
+            # Fill NaNs with series median to avoid stalls; then integrate
+            v_series = pd.Series(v).fillna(pd.Series(v).median())
+            cum = np.cumsum(v_series.to_numpy() * dt)
+            cum_dist[c] = cum
+        else:
+            # Fallback: integrate Distance deltas (handling lap-wrap resets)
+            d = traces[c].get("Distance")
+            if d is not None and np.isfinite(d).any():
+                dd = pd.Series(d).interpolate(limit_direction="both").to_numpy()
+                diff = np.diff(dd, prepend=dd[0])
+                # Ignore big negative jumps (lap counter reset)
+                diff[diff < -TRACK_LEN * 0.5] = 0.0
+                cum = np.cumsum(np.clip(diff, 0, None))
+                cum_dist[c] = cum
+            else:
+                cum_dist[c] = np.zeros_like(t_grid)
 
     # Trail length in frames
     trail_len = int(TRAIL_RATIO * frames)
 
-    # Prepack arrays for quick access
     X = {c: traces[c]["X"] for c in codes}
     Y = {c: traces[c]["Y"] for c in codes}
     D = {c: traces[c]["Distance"] for c in codes}
 
-    def update(frame_idx):
-        # Prepare leader by "Distance" if available; else by arc-length along XY (approx)
-        lead_metric = {}
+    def leader_by_progress(idx):
+        """Pick leader by greatest cumulative progress (meters)."""
+        best_c = None
+        best_v = -np.inf
         for c in codes:
-            di = D[c][frame_idx]
-            if np.isfinite(di):
-                lead_metric[c] = di
-            else:
-                # approximate: cumulative XY distance from start
-                xi = X[c][:frame_idx+1]
-                yi = Y[c][:frame_idx+1]
-                if np.isfinite(xi).sum() > 1 and np.isfinite(yi).sum() > 1:
-                    dx = np.diff(xi[np.isfinite(xi)])
-                    dy = np.diff(yi[np.isfinite(yi)])
-                    lead_metric[c] = np.sum(np.hypot(dx, dy))
-                else:
-                    lead_metric[c] = np.nan
+            v = float(cum_dist[c][idx]) if np.isfinite(cum_dist[c][idx]) else -np.inf
+            if v > best_v:
+                best_v, best_c = v, c
+        return best_c, best_v
 
-        # leader is max distance progressed
-        leader = None
-        if any(np.isfinite(v) for v in lead_metric.values()):
-            leader = max((v, c) for c, v in lead_metric.items() if np.isfinite(v))[1]
+    def update(i):
+        # who’s leading?
+        leader, leader_val = leader_by_progress(i)
 
-        # Update markers and trails
+        # update markers and trails
         for c in codes:
-            xi = X[c][frame_idx]
-            yi = Y[c][frame_idx]
-            # fallback to distance line if XY missing
+            xi = X[c][i]
+            yi = Y[c][i]
             if not np.isfinite(xi) or not np.isfinite(yi):
-                xi = D[c][frame_idx] if np.isfinite(D[c][frame_idx]) else np.nan
+                # fallback: draw on distance line if XY missing
+                di = D[c][i] if D[c] is not None else np.nan
+                xi = di if np.isfinite(di) else np.nan
                 yi = 0.0
+            # marker
             artists[c].set_data([xi], [yi])
+            artists[c].set_zorder(6 if c == leader else 5)
+            artists[c].set_markersize(LEADER_SIZE if c == leader else MARKER_SIZE)
 
-            j0 = max(0, frame_idx - trail_len)
-            xt = X[c][j0:frame_idx+1]
-            yt = Y[c][j0:frame_idx+1]
+            # halo + leader label
+            if c == leader:
+                halos[c].set_data([xi], [yi])
+                halos[c].set_visible(True)
+                if SHOW_LEADER_LABEL:
+                    labels[c].set_position((xi + (xmax-xmin)*0.01, yi + (ymax-ymin)*0.01))
+                    labels[c].set_text(f"{c} (P1)")
+                    labels[c].set_visible(True)
+            else:
+                halos[c].set_visible(False)
+                labels[c].set_visible(False)
+
+            # trail
+            j0 = max(0, i - trail_len)
+            xt = X[c][j0:i+1]; yt = Y[c][j0:i+1]
             if not np.isfinite(xt).any() or not np.isfinite(yt).any():
-                xt = D[c][j0:frame_idx+1]
-                yt = np.zeros_like(xt)
+                # fallback to Distance line if XY bad
+                if D[c] is not None:
+                    xt = D[c][j0:i+1]; yt = np.zeros_like(xt)
+                else:
+                    xt = np.array([]); yt = np.array([])
             trails[c].set_data(xt, yt)
+            trails[c].set_zorder(3)
 
-        # Update gap panel
+        # gap panel
         if SHOW_GAP_PANEL and ax_gap is not None:
             ax_gap.cla()
-            ax_gap.set_title("Gap to Leader (m)", fontsize=10)
+            ax_gap.set_title("Gap to Leader (m)", fontsize=11)
+            ax_gap.grid(alpha=0.15)
             if leader is None:
-                # just list drivers
                 y = np.arange(len(codes)) + 1
                 ax_gap.barh(y, [0]*len(codes))
                 ax_gap.set_yticks(y, labels=codes)
                 ax_gap.set_xlim(0, 1)
             else:
-                leader_d = lead_metric[leader]
                 gaps = []
-                labels = []
+                labels_gap = []
                 colors = []
                 for c in codes:
-                    labels.append(c)
+                    labels_gap.append(c)
                     colors.append(COLOR_MAP.get(c, "#bbbbbb"))
-                    di = lead_metric[c]
-                    gap = float(leader_d - di) if np.isfinite(di) else np.nan
-                    gaps.append(max(0.0, gap) if np.isfinite(gap) else 0.0)
-                order = np.argsort(gaps)  # smallest gap (leader) first
+                    di = float(cum_dist[c][i]) if np.isfinite(cum_dist[c][i]) else np.nan
+                    gap = (leader_val - di) if np.isfinite(di) else np.nan
+                    gaps.append(max(0.0, float(gap)) if np.isfinite(gap) else 0.0)
+
+                order = np.argsort(gaps)  # leader first
                 y = np.arange(len(codes)) + 1
-                ax_gap.barh(y, np.array(gaps)[order], color=np.array(colors)[order])
-                ax_gap.set_yticks(y, labels=np.array(labels)[order])
-                xmax = max(10.0, np.nanmax(gaps) if np.isfinite(gaps).any() else 10.0)
-                ax_gap.set_xlim(0, xmax * 1.1)
-                ax_gap.grid(alpha=0.15)
-                # add text labels
-                for yi, gi in zip(y, np.array(gaps)[order]):
-                    ax_gap.text(gi + xmax*0.02, yi, f"+{gi:0.1f}", va="center", fontsize=9)
+                gaps_sorted = np.array(gaps)[order]
+                colors_sorted = np.array(colors)[order]
+                labels_sorted = np.array(labels_gap)[order]
+
+                ax_gap.barh(y, gaps_sorted, color=colors_sorted, edgecolor="none")
+                ax_gap.set_yticks(y, labels=labels_sorted)
+                xmax_local = max(10.0, float(np.nanmax(gaps_sorted)) if np.isfinite(gaps_sorted).any() else 10.0)
+                ax_gap.set_xlim(0, xmax_local * 1.15)
+
+                # value labels
+                for yy, gi in zip(y, gaps_sorted):
+                    ax_gap.text(gi + xmax_local*0.02, yy, f"+{gi:0.1f}", va="center", fontsize=9)
+
+                # highlight leader row with an outline
+                ax_gap.barh(y[0], gaps_sorted[0], color=colors_sorted[0], edgecolor="white", linewidth=1.2)
 
         # time label
-        seconds = t_grid[frame_idx]
-        subtitle.set_text(f"{SUBTITLE}\nT+{seconds:0.2f}s")
-        return list(artists.values()) + list(trails.values()) + [title, subtitle, legend]
+        time_text.set_text(f"T+{t_grid[i]:0.2f}s")
 
-    anim = FuncAnimation(
-        fig, update, frames=frames, interval=1000/FPS, blit=False
-    )
+        # Lap number from leader’s cumulative meters
+        lap_num = int(np.floor(leader_val / TRACK_LEN) + 1) if np.isfinite(leader_val) and TRACK_LEN > 0 else 1
+        lap_text.set_text(f"Lap {lap_num}")
 
-    # Save animation
+        # artists to re-draw
+        draw_list = list(trails.values()) + list(halos.values()) + list(artists.values())
+        draw_list += [time_text, subtitle_text, lap_text]
+        return draw_list
+
+    anim = FuncAnimation(fig, update, frames=frames, interval=1000/FPS, blit=False)
+
+    # Save
     try:
         writer = FFMpegWriter(fps=FPS, bitrate=5000)
         anim.save(OUT_MP4, writer=writer, dpi=DPI)
