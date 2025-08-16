@@ -1,4 +1,4 @@
-# Telemetry Strategy Analysis – Montreal GP 2025  
+# Montreal GP 2025 – Race Engineering Data Analysis
 An in-depth review of the 2025 Montreal Grand Prix using official telemetry and lap timing data to uncover driver performance patterns, pit stop strategy decisions, and pace evolution.  
 
  
